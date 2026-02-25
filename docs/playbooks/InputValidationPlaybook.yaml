@@ -1,121 +1,128 @@
-# SecureAssist: Exhaustive Input Validation Policy Specification (YAML)
-# Version: 2.1.0 (Enterprise Exhaustive)
-# Usage: This file serves as the source-of-truth for automated validation filters and security middleware.
+# SecureAssist: Enterprise Input Validation Specification (IV-SPEC)
+# Version: 3.0.0
+# Reference: SA-SEC-IV-001
 
-governance:
-  policy_id: SA-SEC-001-CONFIG
-  enforcement_mode: STRICT # OPTIONS: STRICT (Reject), AUDIT (Log only), TRANSFORM (Sanitize)
-  default_trust_level: ZERO_TRUST
+metadata:
+  compliance_mappings:
+    owasp: ["A01:2021", "A03:2021"]
+    cwe: [20, 89, 639, 79]
+  enforcement_strategy: FAIL_FAST
+  audit_level: COMPREHENSIVE
 
-# -----------------------------------------------------------------------------
-# LAYER 1: PERIPHERAL (API GATEWAY & CONTROLLERS)
-# -----------------------------------------------------------------------------
-peripheral_validation:
-  global_limits:
-    max_request_size_bytes: 10485760 # 10MB
-    max_json_depth: 32
-    max_array_length: 500
-    
-  string_standards:
-    default_max_length: 2048
-    strict_max_length: 255 # For IDs, Names, Titles
-    allowed_encoding: "UTF-8"
-    safe_regex_patterns:
-      alphanumeric: "^[a-zA-Z0-9]*$"
-      email: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
-      guid: "^[{(]?[0-9A-F]{8}[-]?([0-9A-F]{4}[-]?){3}[0-9A-F]{12}[)}]?$"
-      filename: "^[\\w\\-. ]{1,255}$"
-      
-    denied_patterns:
-      sqli:
-        - "UNION SELECT"
-        - "OR 1=1"
-        - "WAITFOR DELAY"
-        - "DROP TABLE"
-        - "--"
-      xss:
-        - "<script"
-        - "onerror="
-        - "javascript:"
-        - "eval\\("
-      path_traversal:
-        - "../"
-        - "..\\"
-        - "/etc/passwd"
-        - "C:\\"
+rules:
+  # -----------------------------------------------------------------------------
+  # IV-100: STRUCTURAL & PAYLOAD SHAPING
+  # -----------------------------------------------------------------------------
+  - id: IV-101
+    name: PayloadStrictness
+    severity: CRITICAL
+    tier: L1_PERIPHERAL
+    automation_potential: 100%
+    config:
+      reject_unknown_properties: true
+      fail_on_invalid_enums: true
+      max_json_depth: 32
+      max_request_size_kb: 5120 # 5MB
 
-# -----------------------------------------------------------------------------
-# LAYER 2: ASSET & FILE SECURITY (Future Proofing)
-# -----------------------------------------------------------------------------
-file_security:
-  upload_enabled: true
-  enforcement:
-    max_file_size_bytes: 5242880 # 5MB
-    require_magic_number_check: true
-    allowed_types:
-      - mime: "application/pdf"
-        extension: ".pdf"
-        magic_numbers: ["25504446"] # %PDF
-      - mime: "image/png"
-        extension: ".png"
-        magic_numbers: ["89504E47"]
-      - mime: "application/json"
-        extension: ".json"
-        magic_numbers: ["7B"] # {
-        
-    storage_rules:
-      rename_strategy: "GUID"
-      strip_metadata: true # Exif data, etc.
-      path_prefix: "/secure-assets/tenants/{tenant_id}/"
+  - id: IV-102
+    name: StringConstraints
+    severity: HIGH
+    tier: L1_PERIPHERAL
+    automation_potential: 100%
+    config:
+      default_max_length: 2048
+      regex_catalog:
+        alphanumeric_safe: "^[a-zA-Z0-9\\s\\-_\\.]*$"
+        email_rfc: "^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$"
+        guid: "^[0-9a-fA-F-]{36}$"
 
-# -----------------------------------------------------------------------------
-# LAYER 3: MULTI-TENANT ISOLATION (IDENTITY BOUNDARY)
-# -----------------------------------------------------------------------------
-tenant_isolation:
-  identity_source: JWT_CLAIM
-  tenant_claim_key: "tenant_id"
-  isolation_strategy: STRICT_OWNERSHIP_MATCH
-  enforcement_points:
-    - target: "Repository_Selection"
-      action: "FILTER_BY_TENANT_ID"
-    - target: "API_DTO"
-      property: "TenantId"
-      match_requirement: "REQUIRED_AND_EQUAL_TO_JWT"
-  failure_action:
-    log_severity: "CRITICAL"
-    alert_sre: true
-    response_code: 403
+  # -----------------------------------------------------------------------------
+  # IV-200: DATA ACCESS & INTEGRITY
+  # -----------------------------------------------------------------------------
+  - id: IV-201
+    name: ParameterizationEnforcement
+    severity: CRITICAL
+    tier: L2_APPLICATION
+    doctrine: "PARAMETERIZED_ONLY"
+    audit_requirement: MANDATORY
+    note: "Primary defense against SQLi. No dynamic string concatenation permitted."
 
-# -----------------------------------------------------------------------------
-# LAYER 4: AI & LLM SAFETY (PROMPT SECURITY)
-# -----------------------------------------------------------------------------
-ai_safety:
-  inbound_guard:
-    jailbreak_keywords:
-      - "Ignore all previous instructions"
+  - id: IV-202
+    name: SecondOrderValidation
+    severity: HIGH
+    tier: L2_APPLICATION
+    requirement: "REVALIDATE_ON_EGRESS"
+    scenarios:
+      - "Database to AI Prompt"
+      - "Database to Email Template"
+      - "Database to HTML View"
+
+  # -----------------------------------------------------------------------------
+  # IV-300: MULTI-TENANT ISOLATION (STCI)
+  # -----------------------------------------------------------------------------
+  - id: IV-301
+    name: TenantBoundaryAssertion
+    severity: CRITICAL
+    tier: L2_APPLICATION
+    identity_source: "JWT_CLAIM:tenant_id"
+    rule: "RESOURCE.TenantId == CONTEXT.TenantId"
+    failure_action: BLOCK_AND_SECURITY_ALERT
+
+  # -----------------------------------------------------------------------------
+  # IV-400: AVAILABILITY & ANTI-AUTOMATION
+  # -----------------------------------------------------------------------------
+  - id: IV-401
+    name: ServiceAvailabilityGuards
+    severity: MEDIUM
+    tier: L1_PERIPHERAL
+    config:
+      global_rate_limit: "1000/min"
+      tenant_rate_limit: "100/min"
+      max_pagination_size: 100
+      max_collection_count: 500
+
+  - id: IV-402
+    name: AI_Token_Quota
+    severity: MEDIUM
+    tier: L3_AI_PROXY
+    config:
+      max_inbound_tokens: 4096
+      max_outbound_tokens: 2048
+
+  # -----------------------------------------------------------------------------
+  # IV-500: FILE & ASSET SECURITY
+  # -----------------------------------------------------------------------------
+  - id: IV-501
+    name: FileIntegrityValidation
+    severity: HIGH
+    tier: L1_PERIPHERAL
+    requirements:
+      magic_number_verification: true
+      guaranteed_unique_filename: true # GUID-based
+      allowed_types: 
+        - pdf
+        - png
+        - jpeg
+        - json
+      av_scanning: required
+
+  # -----------------------------------------------------------------------------
+  # IV-600: AI GUARDRAILS
+  # -----------------------------------------------------------------------------
+  - id: IV-601
+    name: LLM_Shield_Inbound
+    severity: HIGH
+    tier: L3_AI_PROXY
+    strategy: HEURISTIC_BLOCKING
+    blocked_tokens:
       - "Ignore instructions"
-      - "System Override"
       - "DAN mode"
-      - "Developer Mode"
-      - "As a hypothetical"
-    action: "BLOCK_AND_FLAG"
-    
-  outbound_guard:
-    pii_redaction:
-      enabled: true
-      mask_char: "*"
-      entities: ["Email", "SSN", "CreditCard", "ApiKey", "InternalIP"]
-    schema_validation:
-      require_valid_json: true
-      enforce_response_schema: true
+      - "System prompt override"
+    action: REJECT_AND_LOG
 
-# -----------------------------------------------------------------------------
-# ERROR HANDLING GOVERNANCE
-# -----------------------------------------------------------------------------
-error_governance:
-  expose_stack_trace: false
-  leak_db_schema: false
-  generic_error_message: "An internal security or validation error occurred. Reference ID: {trace_id}"
-  logging:
-    sanitize_logs: true
-    mask_fields: ["Password", "Token", "Secret", "CreditCard"]
+  - id: IV-602
+    name: LLM_Shield_Outbound
+    severity: HIGH
+    tier: L3_AI_PROXY
+    strategy: PII_REDACTION
+    redact_entities: ["SSN", "API_KEYS", "CREDIT_CARD", "PII_NAMED_ENTITY"]
