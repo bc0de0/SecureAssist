@@ -7,6 +7,8 @@ using SecureAssist.Infrastructure.AI;
 using SecureAssist.Infrastructure.Persistence;
 using System.Text;
 
+DotNetEnv.Env.Load();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -73,7 +75,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Dependency Injection Wiring
-builder.Services.AddScoped<IAiService, FakeAiService>();
+builder.Services.AddHttpClient<IAiService, TogetherAiService>();
 builder.Services.AddScoped<IAiResponseStorage, InProcessAiResponseStorage>();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(SecureAssist.Application.Features.AI.Commands.AskAiCommand).Assembly));
 
