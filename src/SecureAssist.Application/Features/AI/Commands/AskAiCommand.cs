@@ -18,14 +18,21 @@ public record AskAiCommand : IRequest<Guid>
 public class AskAiCommandHandler : IRequestHandler<AskAiCommand, Guid>
 {
     private readonly AppDbContext _context;
+    private readonly IAiService _aiService;
+    private readonly IAiResponseStorage _responseStorage;
 
-    public AskAiCommandHandler(AppDbContext context)
+    public AskAiCommandHandler(AppDbContext context, IAiService aiService, IAiResponseStorage responseStorage)
     {
         _context = context;
+        _aiService = aiService;
+        _responseStorage = responseStorage;
     }
 
     public async Task<Guid> Handle(AskAiCommand request, CancellationToken cancellationToken)
     {
+        // Call the AI service
+        var response = await _aiService.ProcessPromptAsync(request.Prompt);
+
         var interaction = new AIInteraction
         {
             Prompt = request.Prompt,
@@ -39,6 +46,13 @@ public class AskAiCommandHandler : IRequestHandler<AskAiCommand, Guid>
         _context.AIInteractions.Add(interaction);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return request.WorkspaceId; // Returning workspaceId as a placeholder
+        // Store the response for future validation/augmentation (NoSQL Preparation)
+        await _responseStorage.StoreResponseAsync(
+            interaction.Id.ToString(), 
+            request.Prompt, 
+            response, 
+            interaction.Metadata);
+
+        return request.WorkspaceId;
     }
 }
