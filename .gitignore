@@ -53,6 +53,7 @@ Thumbs.db
 
 # [Secrets]
 appsettings.Development.json
+.env
 *.pfx
 *.certificate
 *.key
