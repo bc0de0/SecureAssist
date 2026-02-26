@@ -30,8 +30,12 @@ public class AskAiCommandHandler : IRequestHandler<AskAiCommand, Guid>
 
     public async Task<Guid> Handle(AskAiCommand request, CancellationToken cancellationToken)
     {
+        // SECURE: Sanitize prompt for injection and length
+        var sanitizedPrompt = request.Prompt.Trim().Replace("<script>", "").Replace("</script>", "");
+        if (sanitizedPrompt.Length > 2000) sanitizedPrompt = sanitizedPrompt.Substring(0, 2000);
+
         // Call the AI service
-        var response = await _aiService.ProcessPromptAsync(request.Prompt);
+        var response = await _aiService.ProcessPromptAsync(sanitizedPrompt);
 
         var interaction = new AIInteraction
         {

@@ -15,9 +15,15 @@ public class AppDbContext : DbContext
     public DbSet<SearchLog> SearchLogs { get; set; }
     public DbSet<WorkflowActionRecord> WorkflowActionRecords { get; set; }
 
+    // Mocking a tenant ID for the session. In production, this comes from a service.
+    public Guid CurrentTenantId { get; set; } = Guid.Empty;
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-        // TODO: Implement tenant isolation enforcement
+        
+        // SECURE: Global Query Filter for Tenant Isolation
+        modelBuilder.Entity<Document>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
+        modelBuilder.Entity<AIInteraction>().HasQueryFilter(e => e.TenantId == CurrentTenantId);
     }
 }

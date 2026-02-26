@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace SecureAssist.Domain.Entities;
 
-public class Document : BaseEntity
+public class Document : BaseEntity, ITenantEntity
 {
     public Guid WorkspaceId { get; set; }
     public Guid TenantId { get; set; }

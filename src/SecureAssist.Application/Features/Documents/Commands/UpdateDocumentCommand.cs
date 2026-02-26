@@ -33,15 +33,14 @@ public class UpdateDocumentCommandHandler : IRequestHandler<UpdateDocumentComman
         
         if (document == null) return false;
 
-        // Insecure: Overwrite everything without validation or ownership checks
+        // SECURE: Only update allowed fields. 
+        // TenantId, OwnerId, and CreatedAt are restricted.
         document.Title = request.Title;
         document.Description = request.Description;
-        document.TenantId = request.TenantId;
-        document.OwnerId = request.OwnerId;
         document.Status = request.Status;
         document.Priority = request.Priority;
-        document.CreatedAt = request.CreatedAt;
         document.InternalNotes = request.InternalNotes;
+        document.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
         return true;

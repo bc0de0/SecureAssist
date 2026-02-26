@@ -2,7 +2,7 @@ using System;
 
 namespace SecureAssist.Domain.Entities;
 
-public class AIInteraction : BaseEntity
+public class AIInteraction : BaseEntity, ITenantEntity
 {
     public string Prompt { get; set; }
     public Guid WorkspaceId { get; set; }

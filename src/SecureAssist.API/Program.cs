@@ -6,6 +6,8 @@ using SecureAssist.Application.Interfaces;
 using SecureAssist.Infrastructure.AI;
 using SecureAssist.Infrastructure.Persistence;
 using System.Text;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 DotNetEnv.Env.Load();
 
@@ -13,6 +15,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Add FluentValidation
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssembly(typeof(SecureAssist.Application.Validation.AskAiCommandValidator).Assembly);
 
 // Health Checks
 builder.Services.AddHealthChecks();

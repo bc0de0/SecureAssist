@@ -26,9 +26,13 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
 
     public async Task<Guid> Handle(UploadDocumentCommand request, CancellationToken cancellationToken)
     {
-        // Insecure: Save file blindly to a local path
-        var filePath = Path.Combine("uploads", request.FileName);
-        Directory.CreateDirectory("uploads");
+        // SECURE: Prevent Path Traversal by using a GUID and sanitizing input
+        var safeFileName = Path.GetFileName(request.FileName);
+        var uniqueFileName = $"{Guid.NewGuid()}_{safeFileName}";
+        var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
+        var filePath = Path.Combine(uploadPath, uniqueFileName);
+        
+        Directory.CreateDirectory(uploadPath);
         
         using (var fileStream = new FileStream(filePath, FileMode.Create))
         {
@@ -37,7 +41,7 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
 
         var document = new Document
         {
-            FileName = request.FileName,
+            FileName = safeFileName,
             FilePath = filePath,
             WorkspaceId = request.WorkspaceId,
             Description = request.Description,
@@ -45,7 +49,7 @@ public class UploadDocumentCommandHandler : IRequestHandler<UploadDocumentComman
             Tags = JsonSerializer.Serialize(request.Tags),
             CreatedAt = DateTime.UtcNow,
             Status = "Uploaded",
-            Title = request.FileName // Default title
+            Title = safeFileName
         };
 
         _context.Documents.Add(document);

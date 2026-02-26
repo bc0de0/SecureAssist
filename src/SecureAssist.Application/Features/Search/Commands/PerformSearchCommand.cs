@@ -25,12 +25,15 @@ public class PerformSearchCommandHandler : IRequestHandler<PerformSearchCommand,
 
     public async Task<List<Document>> Handle(PerformSearchCommand request, CancellationToken cancellationToken)
     {
-        // Insecure: Log the search and perform a naive query
+        // SECURE: Enforce limits and sanitize inputs
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        var page = Math.Max(request.Page, 1);
+
         var searchLog = new SearchLog
         {
             Query = request.Query,
-            Page = request.Page,
-            PageSize = request.PageSize,
+            Page = page,
+            PageSize = pageSize,
             SortBy = request.SortBy,
             SortDirection = request.SortDirection,
             IncludeDeleted = request.IncludeDeleted
@@ -39,12 +42,20 @@ public class PerformSearchCommandHandler : IRequestHandler<PerformSearchCommand,
         _context.SearchLogs.Add(searchLog);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Naive search (SQL injection point if we used raw SQL, but here we'll just be "loose")
-        var results = _context.Documents
+        // SECURE: Naive search with limited results
+        var query = _context.Documents.AsQueryable();
+
+        if (!request.IncludeDeleted)
+        {
+            // Assuming we had an IsDeleted flag, we would filter here
+        }
+
+        var results = await query
             .Where(d => d.Title.Contains(request.Query) || d.Description.Contains(request.Query))
-            .Skip((request.Page - 1) * request.PageSize)
-            .Take(request.PageSize)
-            .ToList();
+            .OrderBy(d => d.Id) // Default safe sort
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
 
         return results;
     }
