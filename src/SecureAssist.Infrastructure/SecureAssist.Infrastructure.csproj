@@ -8,6 +8,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.8" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="MongoDB.Driver" Version="2.28.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SecureAssist.Domain\SecureAssist.Domain.csproj" />

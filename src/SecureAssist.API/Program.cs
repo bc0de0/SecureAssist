@@ -82,7 +82,7 @@ builder.Services.AddAuthentication(options =>
 
 // Dependency Injection Wiring
 builder.Services.AddHttpClient<IAiService, TogetherAiService>();
-builder.Services.AddScoped<IAiResponseStorage, InProcessAiResponseStorage>();
+builder.Services.AddScoped<IAiResponseStorage, MongoAiResponseStorage>();
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblies(typeof(SecureAssist.Application.Features.AI.Commands.AskAiCommand).Assembly));
 
 // TODO: Implement rate limiting middleware
