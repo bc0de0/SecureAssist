@@ -1,30 +1,25 @@
 using Microsoft.AspNetCore.Mvc;
-using SecureAssist.Application.Interfaces;
+using MediatR;
+using SecureAssist.Application.Features.AI.Commands;
 
 namespace SecureAssist.API.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/ai")]
 public class AiController : ControllerBase
 {
-    private readonly IAiService _aiService;
+    private readonly IMediator _mediator;
 
-    public AiController(IAiService aiService)
+    public AiController(IMediator mediator)
     {
-        _aiService = aiService;
+        _mediator = mediator;
     }
 
-    [HttpPost("process")]
-    public async Task<IActionResult> Process([FromBody] string prompt)
+    [HttpPost("ask")]
+    public async Task<IActionResult> Ask([FromBody] AskAiCommand command)
     {
-        // TODO: Implement input validation at trust boundaries
-        
-        if (string.IsNullOrWhiteSpace(prompt))
-        {
-            return BadRequest("Prompt cannot be empty.");
-        }
-
-        var response = await _aiService.ProcessPromptAsync(prompt);
-        return Ok(new { Response = response });
+        // Intentionally under-validated
+        var result = await _mediator.Send(command);
+        return Ok(new { WorkspaceId = result });
     }
 }

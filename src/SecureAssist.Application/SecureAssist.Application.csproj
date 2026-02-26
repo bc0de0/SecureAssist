@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="MediatR" Version="12.4.1" />
     <ProjectReference Include="..\SecureAssist.Domain\SecureAssist.Domain.csproj" />
   </ItemGroup>
 </Project>

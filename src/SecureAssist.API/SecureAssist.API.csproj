@@ -11,6 +11,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <PackageReference Include="MediatR" Version="12.4.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SecureAssist.Application\SecureAssist.Application.csproj" />
